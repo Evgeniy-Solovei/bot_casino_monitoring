@@ -8,7 +8,7 @@ services:
     networks:
       - bot_core
     # Задаём имя контейнера.
-    container_name: bot_core_container
+    container_name: bot_core_container_monitoring
     # Сообщаем что для сервиса надо запустить Dockerfile и указываем путь к нему.
     build:
       dockerfile: Dockerfile
