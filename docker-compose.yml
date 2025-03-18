@@ -57,7 +57,7 @@ services:
     # Сообщаем что для сервиса надо запустить Dockerfile и указываем путь к нему.
     build:
       dockerfile: Dockerfile
-    command: celery -A skill_tap worker --loglevel=info
+    command: celery -A bot_core worker --loglevel=info
     # В параметр указываются приложения, которые должны быть запущены перед запуском приложения celery.
     depends_on:
       - redis
@@ -83,7 +83,7 @@ services:
     # Сообщаем что для сервиса надо запустить Dockerfile и указываем путь к нему.
     build:
       dockerfile: Dockerfile
-    command: celery -A skill_tap beat --loglevel=info
+    command: celery -A bot_core beat --loglevel=info
     # В параметр указываются приложения, которые должны быть запущены перед запуском приложения celery beat.
     depends_on:
       - redis
