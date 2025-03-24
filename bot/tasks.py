@@ -59,6 +59,8 @@ def check_domain_availability():
     domains = Domain.objects.filter(is_active=True)
     print(f"Найдено активных доменов: {domains.count()}")
 
+    result_messages = []  # Список для хранения всех сообщений
+
     for domain in domains:
         try:
             response = requests.get(f"http://{domain.name}", timeout=5)
@@ -66,15 +68,20 @@ def check_domain_availability():
         except requests.exceptions.RequestException:
             accessible = False
 
-        # Логика для теста - отправляем инфу о каждом домене
+        # Логика для теста - создаем строку для каждого домена
         status_text = "✅ Доступен" if accessible else "❌ Недоступен"
-        send_telegram_message(f"{status_text}: {domain.name}")
+        result_messages.append(f"{status_text}: {domain.name}")
 
         # Обновляем статус в БД (если отличается)
         if accessible != domain.is_accessible:
+            print(f"Обновление доступности домена {domain.name} с {domain.is_accessible} на {accessible}")
             domain.is_accessible = accessible
             domain.last_checked = timezone.localtime()
             domain.save()
+
+    # Отправляем все результаты в одном сообщении
+    if result_messages:
+        send_telegram_message("\n".join(result_messages))
 
 
 @shared_task
@@ -84,19 +91,21 @@ def check_api_blocked_domains():
     if response.status_code != 200:
         send_telegram_message("❌ Ошибка при получении данных из API блокировок.")
         return
-
-    blocked_domains = set(response.json())
+    # Очистка доменов от лишних кавычек
+    blocked_domains = set(domain.strip('\"') for domain in response.json())  # Убираем кавычки с доменов
     domains = Domain.objects.filter(is_active=True)
-
+    result_messages = []  # Список для хранения всех сообщений
     for domain in domains:
         is_blocked = domain.name in blocked_domains
-
-        # Логика для теста - отправляем инфу о каждом домене
+        # Логика для теста - создаем строку для каждого домена
         status_text = "🚫 В реестре" if is_blocked else "✅ Не в реестре"
-        send_telegram_message(f"{status_text}: {domain.name}")
-
+        result_messages.append(f"{status_text}: {domain.name}")
         # Обновляем статус в БД (если отличается)
         if is_blocked != domain.is_blocked_api:
+            print(f"Обновление доступности домена {domain.name} с {domain.is_accessible} на {is_blocked}")
             domain.is_blocked_api = is_blocked
             domain.last_checked = timezone.localtime()
             domain.save()
+    # Отправляем все результаты в одном сообщении
+    if result_messages:
+        send_telegram_message("\n".join(result_messages))

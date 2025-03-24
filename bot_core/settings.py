@@ -150,11 +150,11 @@ CELERY_TIMEZONE = "Europe/Moscow"
 CELERY_BEAT_SCHEDULE = {
     'check-domain-availability-every-5-minutes': {
         'task': 'bot.tasks.check_domain_availability',
-        'schedule': crontab(minute='*/5'),
+        'schedule': crontab(minute='*/1'),
     },
     'check-api-blocked-domains-every-hour': {
         'task': 'bot.tasks.check_api_blocked_domains',
-        'schedule': crontab(0, '*'),
+        'schedule': crontab(minute='*/1'),
     },
 }
 
