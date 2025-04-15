@@ -9,47 +9,25 @@ from .views import send_telegram_message
 API_URL = "https://reestr.rublacklist.net/api/v3/domains/"
 
 
-# @shared_task
-# def check_domain_availability():
-#     """Проверка доступности доменов (HTTP 200)."""
-#     print(">>> Запуск проверки доменов")
-#     domains = Domain.objects.filter(is_active=True)
-#     print(f"Найдено активных доменов: {domains.count()}")
-#     for domain in domains:
-#         try:
-#             response = requests.get(f"http://{domain.name}", timeout=5)
-#             accessible = response.status_code == 200
-#         except requests.exceptions.RequestException:
-#             accessible = False
-#         if accessible != domain.is_accessible:  # Состояние изменилось
-#             domain.is_accessible = accessible
-#             domain.last_checked = timezone.localtime()
-#             domain.save()
-#             if accessible:
-#                 send_telegram_message(f"✅ Домен {domain.name} снова доступен.")
-#             else:
-#                 send_telegram_message(f"⚠️ Домен {domain.name} стал недоступен.")
-#
-#
-# @shared_task
-# def check_api_blocked_domains():
-#     """Проверка доменов через API (реестр заблокированных)."""
-#     response = requests.get(API_URL, timeout=10)
-#     if response.status_code != 200:
-#         send_telegram_message("❌ Ошибка при получении данных из API блокировок.")
-#         return
-#     blocked_domains = set(response.json())
-#     domains = Domain.objects.filter(is_active=True)
-#     for domain in domains:
-#         is_blocked = domain.name in blocked_domains
-#         if is_blocked != domain.is_blocked_api:
-#             domain.is_blocked_api = is_blocked
-#             domain.last_checked = now()
-#             domain.save()
-#             if is_blocked:
-#                 send_telegram_message(f"🚫 Домен {domain.name} добавлен в реестр блокировок.")
-#             else:
-#                 send_telegram_message(f"✅ Домен {domain.name} удалён из реестра блокировок.")
+def send_domain_status_to_api(domain_name, status="Не Активен"):
+    url = "https://api.gang-soft.com/api/take_bot_data/"
+    payload = {
+        "current_domain": domain_name,
+        "domain_mask": domain_name,
+        "status": status
+    }
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+
+    try:
+        response = requests.post(url, data=payload, headers=headers, timeout=10, verify=False)  # verify=False — отключаем SSL
+        if response.status_code == 200:
+            print(f"✔️ Домен {domain_name} успешно отправлен на сервер.")
+        else:
+            print(f"❌ Ошибка {response.status_code}: {response.text}")
+    except Exception as e:
+        print(f"⚠️ Ошибка при отправке данных домена {domain_name}: {e}")
 
 
 @shared_task
@@ -106,6 +84,8 @@ def check_api_blocked_domains():
             domain.is_blocked_api = is_blocked
             domain.last_checked = timezone.localtime()
             domain.save()
+            if is_blocked:
+                send_domain_status_to_api(domain.name, status="Заблокирован")
     # Отправляем все результаты в одном сообщении
     if result_messages:
         send_telegram_message("\n".join(result_messages))

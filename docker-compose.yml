@@ -14,7 +14,7 @@ services:
       dockerfile: Dockerfile
     # Устанавливаем команду для применения миграций и для запуска сервера.
     command: >
-       sh -c "python manage.py migrate && uvicorn bot_core.asgi:application --host 0.0.0.0 --port 8000 & python tg_bot.py"
+       sh -c "python manage.py migrate && uvicorn bot_core.asgi:application --host 0.0.0.0 --port 8000 & python -u tg_bot.py"
     # Параметр сопоставляющий порты между хостом(8000) и контейнером(8000).
     ports:
       - '8010:8000'
@@ -33,11 +33,14 @@ services:
   redis:
     # Задаём название сети для контейнера.
     networks:
-      - bot_core
+      bot_core:
+        aliases:
+          - redis_internal
     # Задаём имя контейнера.
     container_name: redis_container
     # Указываем какой образ использовать для запуска контейнера.
     image: redis:alpine
+    command: redis-server --appendonly yes --bind 0.0.0.0 --protected-mode no
     environment:
       TZ: Europe/Moscow
     # Параметр сопоставляющий порты между хостом(6379) и контейнером(6379).
