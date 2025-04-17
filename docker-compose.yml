@@ -40,7 +40,7 @@ services:
     container_name: redis_container
     # Указываем какой образ использовать для запуска контейнера.
     image: redis:alpine
-    command: redis-server --appendonly yes --bind 0.0.0.0 --protected-mode no --replicaof-no-one
+    command: redis-server --appendonly yes --bind 0.0.0.0 --protected-mode no
     environment:
       TZ: Europe/Moscow
     # Параметр сопоставляющий порты между хостом(6379) и контейнером(6379).
