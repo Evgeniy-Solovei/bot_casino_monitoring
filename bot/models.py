@@ -8,6 +8,7 @@ class Domain(models.Model):
     is_blocked_api = models.BooleanField(default=False, verbose_name='Блокировка домена API')
     is_active = models.BooleanField(default=True, verbose_name='Активный домен для проверки')
     last_checked = models.DateTimeField(auto_now=True, verbose_name='Последняя проверка')
+    pay_domains = models.BooleanField(default=False, verbose_name='Куплен домен на замену')
 
     def __str__(self):
         return self.name

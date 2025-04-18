@@ -160,6 +160,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'bot.tasks.check_api_blocked_domains',
         'schedule': crontab(minute='*/1'),
     },
+    'check-api-blocked-domains-and-pay-domains': {
+        'task': 'bot.tasks.check_api_blocked_domains_pay_now_domain',
+        'schedule': crontab(minute='1', hour='0'),
+    },
+
 }
 
 
