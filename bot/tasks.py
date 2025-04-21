@@ -233,25 +233,37 @@ def create_cloudflare_zone(domain_name: str) -> list[str] | None:
 
 def set_nameservers(domain_name, ns1, ns2):
     """Установка NS для домена через API Namecheap"""
+    sld, tld = domain_name.split('.')  # разделяем домен
     params = {
         'ApiUser': API_USER,
         'ApiKey': API_KEY,
         'UserName': USERNAME,
         'Command': 'namecheap.domains.dns.setCustom',
         'ClientIp': CLIENT_IP,
-        'DomainName': domain_name,
-        'Nameserver1': ns1,
-        'Nameserver2': ns2
+        'SLD': sld,
+        'TLD': tld,
+        'Nameservers': f"{ns1},{ns2}"
     }
+
+    print(f"📤 Отправляем запрос на смену NS для {domain_name}: {ns1}, {ns2}")
+    print(f"🔧 Параметры: {params}")
+
     try:
         response = requests.get('https://api.namecheap.com/xml.response', params=params, timeout=15)
+        print(f"📨 Ответ от Namecheap (смена NS):\n{response.text}")
+
         root = ET.fromstring(response.content)
         result = root.find('.//{http://api.namecheap.com/xml.response}DomainDNSSetCustomResult')
-        if result is not None and result.attrib.get('Updated') == 'true':
-            print(f"✅ NS для {domain_name} успешно обновлены.")
-            return True
+        if result is not None:
+            if result.attrib.get('Updated') == 'true':
+                print(f"✅ NS для {domain_name} успешно обновлены.")
+                return True
+            else:
+                print(f"❌ NS НЕ обновлены: {result.attrib}")
+        else:
+            print("❌ Элемент DomainDNSSetCustomResult не найден")
     except Exception as e:
-        print(f"❌ Ошибка при установке NS для {domain_name}: {e}")
+        print(f"❌ Ошибка при установке NS: {e}")
     return False
 
 
@@ -395,7 +407,6 @@ def test_check_one_domain(domain_name):
         create_domain = find_cheap_domain(base_name=domain_mask)
         print(create_domain)
         a = purchase_domain(domain_name=create_domain)
-        print('aaaaaaaaaaaa')
         print(a)
         nameservers = create_cloudflare_zone(domain_name=create_domain)
         print("nameservers:", nameservers)
@@ -408,5 +419,5 @@ def test_check_one_domain(domain_name):
                 status="Заблокирован",
                 create_domain=create_domain,
                 domain_mask_2=domain_mask,
-                status_2="Не Активен")
+                status_2="Активен")
     send_telegram_message(f"{status_text}: {domain.name}")
