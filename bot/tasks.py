@@ -1,6 +1,7 @@
 import os
 import random
 import string
+import time
 from xml.etree import ElementTree as ET
 import requests
 from celery import shared_task
@@ -326,8 +327,6 @@ def check_api_blocked_domains():
         send_telegram_message("\n".join(result_messages))
 
 
-
-
 @shared_task
 def check_api_blocked_domains_pay_now_domain():
     """Тестовая проверка доменов через API (реестр заблокированных), с отправкой всех результатов."""
@@ -343,29 +342,29 @@ def check_api_blocked_domains_pay_now_domain():
         is_blocked = domain.name in blocked_domains
         # Определяем маску домена
         domain_mask = "1win" if "1win" in domain.name.lower() else "pokerdom" if "pokerdom" in domain.name.lower() else domain.name
-        # Логика для теста - создаем строку для каждого домена
+        # Создаем строку для каждого домена
         status_text = "🚫 Заблокирован в РКН" if is_blocked else "✅ Доступен в РКН"
         result_messages.append(f"{status_text}: {domain.name}")
-        # Обновляем статус в БД (если отличается)
-        if is_blocked != domain.is_blocked_api:
-            print(f"Обновление доступности домена {domain.name} с {domain.is_accessible} на {is_blocked}")
-            domain.is_blocked_api = is_blocked
+        #Поиск доменного имени для покупки
+        time.sleep(2)
+        create_domain = find_cheap_domain(base_name=domain_mask)
+        #Регистрация домена через API Namecheap
+        time.sleep(2)
+        purchase_domain(domain_name=create_domain)
+        #Создание зоны в Cloudflare и получение NS
+        time.sleep(2)
+        nameservers = create_cloudflare_zone(domain_name=create_domain)
+        if nameservers:
+            #Установка NS для домена через API Namecheap
+            time.sleep(2)
+            set_nameservers(create_domain, nameservers[0], nameservers[1])
             domain.last_checked = timezone.localtime()
             domain.pay_domains = True
             domain.save()
-            #Поиск доменного имени для покупки
-            create_domain = find_cheap_domain(base_name=domain_mask)
-            #Регистрация домена через API Namecheap
-            purchase_domain(domain_name=create_domain)
-            #Создание зоны в Cloudflare и получение NS
-            nameservers = create_cloudflare_zone(domain_name=create_domain)
-            if nameservers:
-                #Установка NS для домена через API Namecheap
-                set_nameservers(create_domain, nameservers[0], nameservers[1])
-            if is_blocked:
-                #Отправка статуса домена на сервер Gang-Soft
-                send_domain_status_to_api(domain_name=domain.name, domain_mask=domain_mask, status="Заблокирован",
-                                          create_domain=create_domain, domain_mask_2=domain_mask, status_2="Не Активен")
+        if is_blocked:
+            #Отправка статуса домена на сервер Gang-Soft
+            send_domain_status_to_api(domain_name=domain.name, domain_mask=domain_mask, status="Заблокирован",
+                                      create_domain=create_domain, domain_mask_2=domain_mask, status_2="Активен")
 
     # Отправляем все результаты в одном сообщении
     if result_messages:
