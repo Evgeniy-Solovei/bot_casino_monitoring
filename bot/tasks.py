@@ -93,7 +93,7 @@ def check_domain_available(domain_name):
 
 def find_cheap_domain(base_name, max_price=4.0, attempts=30):
     """Поиск доменного имени для покупки"""
-    zones = ['com', 'net', 'org', 'xyz', 'online', 'site', 'store', 'tech', 'fun']
+    zones = ['com', 'net', 'org', 'xyz', 'online', 'site', 'store', 'tech', 'fun', 'cam', 'by', 'ru']
     for _ in range(attempts):
         suffix = generate_random_suffix()
         zone = random.choice(zones)
@@ -198,11 +198,36 @@ def purchase_domain(domain_name):
     return False
 
 
+def get_cloudflare_credentials(domain_name: str) -> tuple[str, str] | None:
+    """Возвращает email и key для Cloudflare в зависимости от домена"""
+    domain_name = domain_name.lower()
+    if "1win" in domain_name:
+        return (
+            os.getenv("CLOUDFLARE_EMAIL_1WIN"),
+            os.getenv("CLOUDFLARE_KEY_1WIN"),
+        )
+    elif "pokerdom" in domain_name:
+        return (
+            os.getenv("CLOUDFLARE_EMAIL_POKERDOM"),
+            os.getenv("CLOUDFLARE_KEY_POKERDOM"),
+        )
+    return None
+
+
 def create_cloudflare_zone(domain_name: str) -> list[str] | None:
     """Создание зоны в Cloudflare и получение NS"""
+    print(f"📤 Отправка запроса на создание зоны для домена: {domain_name}")
+
+    creds = get_cloudflare_credentials(domain_name)
+    if not creds:
+        print("⚠️ Неизвестный домен — не удалось выбрать аккаунт Cloudflare.")
+        return None
+
+    email, api_key = creds
+
     headers = {
-        "X-Auth-Email": "odin.vin@yandex.ru",
-        "X-Auth-Key": "625a435d54464faa61c5fdf7360adade9e828",
+        "X-Auth-Email": email,
+        "X-Auth-Key": api_key,
         "Content-Type": "application/json",
     }
     data = {
