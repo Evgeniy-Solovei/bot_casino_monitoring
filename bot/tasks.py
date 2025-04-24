@@ -330,45 +330,70 @@ def check_api_blocked_domains():
 @shared_task
 def check_api_blocked_domains_pay_now_domain():
     """Тестовая проверка доменов через API (реестр заблокированных), с отправкой всех результатов."""
-    response = requests.get(API_URL, timeout=10)
-    if response.status_code != 200:
+    print("🔍 Запуск задачи проверки доменов...")
+
+    try:
+        response = requests.get(API_URL, timeout=10)
+    except Exception as e:
+        print(f"❌ Ошибка при запросе к API: {e}")
         send_telegram_message("❌ Ошибка при получении данных из API блокировок.")
         return
+
+    if response.status_code != 200:
+        print(f"❌ Некорректный статус ответа от API: {response.status_code}")
+        send_telegram_message("❌ Ошибка при получении данных из API блокировок.")
+        return
+
+    print("✅ Данные из API получены успешно")
+
     # Очистка доменов от лишних кавычек
-    blocked_domains = set(domain.strip('\"') for domain in response.json())  # Убираем кавычки с доменов
+    blocked_domains = set(domain.strip('\"') for domain in response.json())
+    print(f"📦 Получено заблокированных доменов: {len(blocked_domains)}")
+
     domains = Domain.objects.filter(is_active=True, is_blocked_api=True, pay_domains=False)
-    result_messages = []  # Список для хранения всех сообщений
+    print(f"🔎 Найдено активных доменов для обработки: {domains.count()}")
+
+    result_messages = []
+
     for domain in domains:
+        print(f"\n➡️ Обработка домена: {domain.name}")
         is_blocked = domain.name in blocked_domains
-        # Определяем маску домена
         domain_mask = "1win" if "1win" in domain.name.lower() else "pokerdom" if "pokerdom" in domain.name.lower() else domain.name
-        # Создаем строку для каждого домена
         status_text = "🚫 Заблокирован в РКН" if is_blocked else "✅ Доступен в РКН"
         result_messages.append(f"{status_text}: {domain.name}")
-        #Поиск доменного имени для покупки
+        print(f"📌 Статус домена: {status_text}")
         time.sleep(2)
         create_domain = find_cheap_domain(base_name=domain_mask)
-        #Регистрация домена через API Namecheap
+        print(f"💡 Найден дешевый домен: {create_domain}")
         time.sleep(2)
         purchase_domain(domain_name=create_domain)
-        #Создание зоны в Cloudflare и получение NS
+        print(f"🛒 Домен {create_domain} зарегистрирован")
         time.sleep(2)
         nameservers = create_cloudflare_zone(domain_name=create_domain)
+        print(f"☁️ NS из Cloudflare: {nameservers}")
         if nameservers:
-            #Установка NS для домена через API Namecheap
             time.sleep(2)
             set_nameservers(create_domain, nameservers[0], nameservers[1])
+            print(f"🔧 Установлены NS для {create_domain}: {nameservers}")
             domain.last_checked = timezone.localtime()
             domain.pay_domains = True
             domain.save()
+            print(f"💾 Обновлены данные в базе для домена: {domain.name}")
         if is_blocked:
-            #Отправка статуса домена на сервер Gang-Soft
-            send_domain_status_to_api(domain_name=domain.name, domain_mask=domain_mask, status="Заблокирован",
-                                      create_domain=create_domain, domain_mask_2=domain_mask, status_2="Активен")
+            send_domain_status_to_api(
+                domain_name=domain.name,
+                domain_mask=domain_mask,
+                status="Заблокирован",
+                create_domain=create_domain,
+                domain_mask_2=domain_mask,
+                status_2="Активен"
+            )
+            print(f"📤 Статус домена {domain.name} отправлен на сервер Gang-Soft")
 
-    # Отправляем все результаты в одном сообщении
     if result_messages:
+        print("📨 Отправка итогового сообщения в Telegram...")
         send_telegram_message("\n".join(result_messages))
+        print("✅ Сообщение отправлено")
 
 
 
