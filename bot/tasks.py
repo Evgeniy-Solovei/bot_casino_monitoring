@@ -396,6 +396,11 @@ def check_api_blocked_domains_pay_now_domain():
         time.sleep(2)
         nameservers = create_cloudflare_zone(domain_name=create_domain)
         print(f"☁️ NS из Cloudflare: {nameservers}")
+        domain.last_checked = timezone.localtime()
+        domain.pay_domains = True
+        print(f"обновили флаг заблоченому домену {domain.pay_domains}")
+        domain.save()
+        print(f"💾 Обновлены данные в базе для домена: {domain.name}")
         if nameservers:
             time.sleep(2)
             set_nameservers(create_domain, nameservers[0], nameservers[1])
